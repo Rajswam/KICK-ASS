@@ -1,0 +1,8 @@
+{
+  "name": "KICK ASS",
+  "description": "An interactive chatbot that evaluates the stupidity of your ideas and questions, giving you a 'Kick Ass' score the more absurd they are. It features voice calling and can generate audio, images, and videos to mock you.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": []
+}

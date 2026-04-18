@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidUser(data) {
+        return data.keys().hasAll(['uid', 'createdAt']) &&
+               data.uid is string && data.uid.size() <= 128 &&
+               data.createdAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId && 
+                    isValidUser(incoming()) && incoming().uid == request.auth.uid && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && isValidId(userId) && request.auth.uid == userId && 
+                    isValidUser(incoming()) && incoming().uid == request.auth.uid && 
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'totalKickAssScore', 'email']);
+    }
+
+    function isValidChatSession(data) {
+      return data.keys().hasAll(['userId', 'createdAt', 'updatedAt', 'maxStupidityScore']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.createdAt is timestamp && data.updatedAt is timestamp &&
+             data.maxStupidityScore is number;
+    }
+
+    match /chatSessions/{sessionId} {
+      allow read: if isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(sessionId) &&
+                    isValidChatSession(incoming()) &&
+                    incoming().userId == request.auth.uid &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time;
+      allow update: if isSignedIn() && isValidId(sessionId) &&
+                    existing().userId == request.auth.uid &&
+                    isValidChatSession(incoming()) &&
+                    incoming().userId == existing().userId &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().updatedAt == request.time &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['updatedAt', 'maxStupidityScore', 'title']);
+      allow delete: if isSignedIn() && isValidId(sessionId) && existing().userId == request.auth.uid;
+    }
+
+    function isValidChatMessage(data) {
+      // Allow mediaStr to be optional but validate if present
+      let hasMedia = data.keys().hasAll(['mediaStr']);
+      let baseValid = data.keys().hasAll(['sessionId', 'userId', 'role', 'text', 'createdAt']) &&
+                      data.sessionId is string && data.sessionId.size() <= 128 &&
+                      data.userId is string && data.userId.size() <= 128 &&
+                      data.role is string && data.role.size() <= 64 &&
+                      data.text is string && data.text.size() <= 50000 &&
+                      data.createdAt is timestamp;
+      
+      let stupidScoreValid = !data.keys().hasAll(['stupidityScore']) || data.stupidityScore is number;
+      let mediaStrValid = !hasMedia || (data.mediaStr == null || data.mediaStr is string);
+
+      return baseValid && stupidScoreValid && mediaStrValid;
+    }
+
+    match /chatSessions/{sessionId}/messages/{messageId} {
+      allow read, list: if isSignedIn() && get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(sessionId) && isValidId(messageId) &&
+                    isValidChatMessage(incoming()) &&
+                    incoming().userId == request.auth.uid &&
+                    incoming().sessionId == sessionId &&
+                    incoming().createdAt == request.time &&
+                    get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.userId == request.auth.uid;
+    }
+  }
+}

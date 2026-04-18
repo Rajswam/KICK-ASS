@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the Kick Ass platform",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "totalKickAssScore": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["uid", "createdAt"]
+    },
+    "ChatSession": {
+       "title": "ChatSession",
+       "description": "A conversation with the Kick Ass Bot",
+       "type": "object",
+       "properties": {
+          "userId": { "type": "string" },
+          "title": { "type": "string" },
+          "createdAt": { "type": "number" },
+          "updatedAt": { "type": "number" },
+          "maxStupidityScore": { "type": "number" }
+       },
+       "required": ["userId", "createdAt", "updatedAt", "maxStupidityScore"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A message in a chat session",
+      "type": "object",
+      "properties": {
+         "sessionId": { "type": "string" },
+         "userId": { "type": "string" },
+         "role": { "type": "string" },
+         "text": { "type": "string" },
+         "stupidityScore": { "type": "number" },
+         "createdAt": { "type": "number" }
+      },
+      "required": ["sessionId", "userId", "role", "text", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "chatSessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/ChatSession" },
+      "description": "Chat sessions per user"
+    },
+    "chatSessions/{sessionId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Messages inside a session"
+    }
+  }
+}
